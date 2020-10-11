@@ -1,0 +1,30 @@
+module mantester_module (
+    input a, // Input from switches
+    input b,
+    input ci,
+    input s, // Output from board
+    input co,
+    output expected_out[2], // Expected (s,co) result
+    output s_correct, // Indicator for whether s is correct
+    output co_correct // Same for co
+  ) {
+  
+  // Define an FA processor to determine the expected output
+  full_adder_processor fa;
+  
+  always {
+  
+    // Feed current (a,b,ci) to FA
+    fa.a = a;
+    fa.b = b;
+    fa.ci = ci;
+    
+    // Get expected (s,co) from FA
+    expected_out[1] = fa.s;
+    expected_out[0] = fa.co;
+    
+    // Check if s and co are correct and output results
+    s_correct = ~(s^fa.s);
+    co_correct = ~(co^fa.co);
+  }
+}

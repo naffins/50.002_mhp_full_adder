@@ -1,0 +1,25 @@
+module full_adder_tester (
+    input a, // Input from switches (manual testing) or FSM (autotester)
+    input b,
+    input ci,
+    input s, // Outputs from board
+    input co,
+    output s_correct, // Indicator for whether s is correct
+    output co_correct // Same for co
+  ) {
+  
+  // Define a FA processor to calculate expected output
+  full_adder_processor fa;
+  
+  always {
+    
+    // Route (a,b,ci) to FA processor
+    fa.a = a;
+    fa.b = b;
+    fa.ci = ci;
+    
+    // Check if expected and actual (s,co) are the same
+    s_correct = ~(s ^ fa.s);
+    co_correct = ~(co ^ fa.co);
+  }
+}

@@ -1,0 +1,192 @@
+module au_top (
+    input clk,              // 100MHz clock
+    input rst_n,            // reset button (active low)
+    output led [8],         // 8 user controllable LEDs
+    input usb_rx,           // USB->Serial input
+    output usb_tx,          // USB->Serial output
+    output io_led [3][8],   // LEDs on IO Shield
+    output io_seg [8],      // 7-segment LEDs on IO Shield
+    output io_sel [4],      // Digit select on IO Shield
+    input io_button [5],    // 5 buttons on IO Shield
+    input io_dip [3][8],    // DIP switches on IO Shield
+    
+    output out_a,           // Out a signal to board for testing
+    output out_b,           // Out b signal
+    output out_ci,          // Out ci signal
+    input in_s,             // Input s signal from board for testing
+    input in_co             // Input co signal
+  ) {
+  
+    sig rst;                  // reset signal
+  
+    autotester_module autotester(.clk(clk), .rst(rst));
+    mantester_module mantester;  
+  
+    .clk(clk) {
+      // The reset conditioner is used to synchronize the reset signal to the FPGA
+      // clock. This ensures the entire FPGA comes out of reset at the same time.
+      reset_conditioner reset_cond;
+    
+  }
+  always {
+    reset_cond.in = ~rst_n; // input raw inverted reset signal
+    rst = reset_cond.out;   // conditioned reset
+    
+    usb_tx = usb_rx;        // loop serial port
+    
+    led = 8h00;             // turn LEDs off
+    
+    io_led = 3x{{8h00}};    // turn LEDs off
+    io_seg = 8hff;          // turn segments off
+    io_sel = 4hf;           // select no dig  its
+    
+    
+    // Start Main body
+    
+    // Autotester indicator
+    io_led[2][7] = ~io_dip[2][7];
+    
+    // Override to manual testing if true
+    case(io_dip[2][7]){
+      
+      // Auto-testing
+      b0:
+        
+        // Disable manual tester indicator LEDs
+        io_led[2][6:0] = b0000000;
+        
+        // Disable (a,b,ci) input from switches to manual autotester
+        mantester.a = b0;
+        mantester.b = b0;
+        mantester.ci = b0;
+        
+        // Map (a,b,ci) output to board from autotester
+        out_a = autotester.a;
+        out_b = autotester.b;
+        out_ci = autotester.ci;
+        
+        // Disable (s,co) output from board to manual tester
+        mantester.s = b0;
+        mantester.co = b0;
+        
+        // Map (s,co) output from board to autotester
+        autotester.s = in_s;
+        autotester.co = in_co;
+        
+        // Map autotester indicators output to FPGA LED
+        io_led[1] = autotester.ind_current;
+        io_led[0] = autotester.ind_correct;
+      
+      // Manual testing  
+      b1:
+        // Map manual input (a,b,ci) from FPGA switches to FPGA LED
+        io_led[2][6:4] = io_dip[2][6:4];
+        
+        // Map manual input (a,b,ci) from FPGA switches to manual tester
+        mantester.a = io_dip[2][6];
+        mantester.b = io_dip[2][5];
+        mantester.ci = io_dip[2][4];
+        
+        // Map manual input (a,b,ci) from FPGA switches to output pins
+        out_a = io_dip[2][6];
+        out_b = io_dip[2][5];
+        out_ci = io_dip[2][4];
+        
+        // Map expected (s,co) output from manual tester to FPGA LED
+        io_led[2][3:2] = mantester.expected_out;
+        
+        // Map (s,co) output from board to manual tester
+        mantester.s = in_s;
+        mantester.co = in_co;
+        
+        // Disable (s,co) output from board to autotester
+        autotester.s = b0;
+        autotester.co = b0;
+        
+        // Map (s,co) correctness output from manual tester to output
+        io_led[2][1] = mantester.s_correct;
+        io_led[2][0] = mantester.co_correct;
+      
+      // Default: Autotesting
+      default:
+      
+        // Disable manual tester indicator LEDs
+        io_led[2][6:0] = b0000000;
+        
+        // Disable (a,b,ci) input from switches to manual autotester
+        mantester.a = b0;
+        mantester.b = b0;
+        mantester.ci = b0;
+        
+        // Map output pins for (a,b,ci) to board from autotester
+        out_a = autotester.a;
+        out_b = autotester.b;
+        out_ci = autotester.ci;
+        
+        // Disable (s,co) output from board to manual tester
+        mantester.s = b0;
+        mantester.co = b0;
+        
+        // Map (s,co) output from board to autotester
+        autotester.s = in_s;
+        autotester.co = in_co;
+        
+        // Map autotester indicators output to FPGA LED
+        io_led[1] = autotester.ind_current;
+        io_led[0] = autotester.ind_correct;
+    }
+    
+    // End Main body
+    
+    /* // Start Autotester only (for debugging)
+    
+    // Map autotester indicators output to FPGA LED
+    io_led[1] = autotester.ind_current;
+    io_led[0] = autotester.ind_correct;
+       
+    // Map s and co from board to autotester
+    autotester.s = in_s;
+    autotester.co = in_co;
+    
+    // Map output pins for (a,b,ci) to board from autotester
+    out_a = autotester.a;
+    out_b = autotester.b;
+    out_ci = autotester.ci;
+    
+    // Indicate that autotesting is active
+    io_led[2][7] = b1;
+    
+    */ // End Autotester only
+    
+    /* // Start Mantester only (for debugging)
+    
+    // Map manual input (a,b,ci) from FPGA switches to FPGA LED
+    io_led[2][6:4] = io_dip[2][6:4];
+        
+    // Map manual input (a,b,ci) from FPGA switches to manual tester
+    mantester.a = io_dip[2][6];
+    mantester.b = io_dip[2][5];
+    mantester.ci = io_dip[2][4];
+        
+    // Map manual input (a,b,ci) from FPGA switches to output pins
+    out_a = io_dip[2][6];
+    out_b = io_dip[2][5];
+    out_ci = io_dip[2][4];
+        
+    // Map expected (s,co) output from manual tester to FPGA LED
+    io_led[2][3:2] = mantester.expected_out;
+        
+    // Map (s,co) output from board to manual tester
+    mantester.s = in_s;
+    mantester.co = in_co;
+    
+    // Map (s,co) correctness output from manual tester to output
+    io_led[2][1] = mantester.s_correct;
+    io_led[2][0] = mantester.co_correct;
+    
+    // Indicate that autotesting is inactive
+    io_led[2][7] = b0;   
+       
+   */ // End Mantester only
+  }
+}

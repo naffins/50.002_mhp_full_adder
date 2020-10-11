@@ -1,0 +1,204 @@
+module autotester_module (
+    input clk,  // clock
+    input rst, // reset button (currently non-functional)
+    input s, // Input s from board
+    input co, // Input co from board
+    output a, // Output test a
+    output b, // Output test b
+    output ci, // Output test ci
+    output ind_current[8], // Output LED indicators to indicate which state is being tested
+    output ind_correct[8] // Output LED indicators to indicate if the response for current state is correct
+    
+  ) {
+    
+    // Define a module to test FA outputs from board
+    full_adder_tester fa_tester;
+    
+    // Define a slower clock (2^27 times slower than normal clock) to toggle between states visibly
+    counter slowclock(#SIZE(1),#DIV(26), .clk(clk), .rst(rst));
+    
+    // Define an FSM to toggle between (a,b,ci) values to be tested (states named after (a,b,ci) combinations to be tested)
+    fsm state_controller(.clk(slowclock.value), .rst(rst)) = {S000, S001, S010, S011, S100, S101, S110, S111};
+  
+    // Define intermediate joints for both output and FA tester
+    sig int_a, int_b, int_ci;
+  
+    // Define intermediate joints for FA tester correctness outputs post-DFF
+    sig s_correct, co_correct;
+  
+    // Define 2 DFFs for FA tester correctness outputs to minimize (already very small) metastability risk
+    dff s_correct_dff(#INIT(0), .clk(clk), .rst(rst));
+    dff co_correct_dff(#INIT(0), .clk(clk), .rst(rst));
+  
+  always {
+    
+    // Check (s,co) correctness
+    fa_tester.s = s;
+    fa_tester.co = co;
+    
+    // Route correctness outputs through DFFs to minimize metastability risk
+    s_correct_dff.d = fa_tester.s_correct;
+    co_correct_dff.d = fa_tester.co_correct;
+    s_correct = s_correct_dff.q;
+    co_correct = co_correct_dff.q;
+    
+    // Main FSM body: based on current state and inputs
+    case (state_controller.q){
+    
+      state_controller.S000:
+        
+        // State = 000
+        int_a = b0;
+        int_b = b0;
+        int_ci = b0;
+        
+        // Show that this state is being tested
+        ind_current = b10000000;
+        
+        // Show whether test for this state is passed
+        ind_correct = (s_correct & co_correct)? b10000000 : b00000000;
+        
+        // Move on to next state only if current output is correct
+        state_controller.d = (s_correct & co_correct)? state_controller.S001 : state_controller.S000;
+        
+      state_controller.S001:
+        
+        // State = 001
+        int_a = b0;
+        int_b = b0;
+        int_ci = b1;
+        
+        // Show that this state is being tested
+        ind_current = b01000000;
+        
+        // Show whether test for this state is passed
+        ind_correct = (s_correct & co_correct)? b01000000 : b00000000;
+        
+        // Move on to next state only if current output is correct
+        state_controller.d = (s_correct & co_correct)? state_controller.S010 : state_controller.S001;
+      
+      state_controller.S010:
+        
+        // State = 010
+        int_a = b0;
+        int_b = b1;
+        int_ci = b0;
+        
+        // Show that this state is being tested
+        ind_current = b00100000;
+        
+        // Show whether test for this state is passed
+        ind_correct = (s_correct & co_correct)? b00100000 : b00000000;
+        
+        // Move on to next state only if current output is correct
+        state_controller.d = (s_correct & co_correct)? state_controller.S011 : state_controller.S010;
+      
+      state_controller.S011:
+        
+        // State = 011
+        int_a = b0;
+        int_b = b1;
+        int_ci = b1;
+        
+        // Show that this state is being tested
+        ind_current = b00010000;
+        
+        // Show whether test for this state is passed
+        ind_correct = (s_correct & co_correct)? b00010000 : b00000000;
+        
+        // Move on to next state only if current output is correct
+        state_controller.d = (s_correct & co_correct)? state_controller.S100 : state_controller.S011;
+      
+      state_controller.S100:
+        
+        // State = 100
+        int_a = b1;
+        int_b = b0;
+        int_ci = b0;
+        
+        // Show that this state is being tested
+        ind_current = b00001000;
+        
+        // Show whether test for this state is passed
+        ind_correct = (s_correct & co_correct)? b00001000 : b00000000;
+        
+        // Move on to next state only if current output is correct
+        state_controller.d = (s_correct & co_correct)? state_controller.S101 : state_controller.S100;
+      
+      state_controller.S101:
+        
+        // State = 101
+        int_a = b1;
+        int_b = b0;
+        int_ci = b1;
+        
+        // Show that this state is being tested
+        ind_current = b00000100;
+        
+        // Show whether test for this state is passed
+        ind_correct = (s_correct & co_correct)? b00000100 : b00000000;
+        
+        // Move on to next state only if current output is correct
+        state_controller.d = (s_correct & co_correct)? state_controller.S110 : state_controller.S101;
+      
+      state_controller.S110:
+        
+        // State = 110
+        int_a = b1;
+        int_b = b1;
+        int_ci = b0;
+        
+        // Show that this state is being tested
+        ind_current = b00000010;
+        
+        // Show whether test for this state is passed
+        ind_correct = (s_correct & co_correct)? b00000010 : b00000000;
+        
+        // Move on to next state only if current output is correct
+        state_controller.d = (s_correct & co_correct)? state_controller.S111 : state_controller.S110;
+        
+      state_controller.S111:
+        
+        // State = 111
+        int_a = b1;
+        int_b = b1;
+        int_ci = b1;
+        
+        // Show that this state is being tested
+        ind_current = b00000001;
+        
+        // Show whether test for this state is passed
+        ind_correct = (s_correct & co_correct)? b00000001 : b00000000;
+        
+        // Move on to next state only if current output is correct
+        state_controller.d = (s_correct & co_correct)? state_controller.S000 : state_controller.S111;
+        
+      default:
+      
+        // State = Default (000)
+        int_a = b0;
+        int_b = b0;
+        int_ci = b0;
+        
+        // Show that this state is being tested
+        ind_current = b10000000;
+        
+        // Show whether test for this state is passed
+        ind_correct = (s_correct & co_correct)? b10000000 : b00000000;
+        
+        // Move on to next state only if current output is correct
+        state_controller.d = (s_correct & co_correct)? state_controller.S001 : state_controller.S000;
+        
+    }
+    
+    // Map to output to board for testing
+    a = int_a;
+    b = int_b;
+    ci = int_ci;
+    
+    // Map to FA tester inputs for calculating expected s and co
+    fa_tester.a = int_a;
+    fa_tester.b = int_b;
+    fa_tester.ci = int_ci;
+  }
+}

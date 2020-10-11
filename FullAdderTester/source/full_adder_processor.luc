@@ -1,0 +1,16 @@
+// Module to evaluate correct result of full adder given certain outputs
+module full_adder_processor (
+    input a,
+    input b,
+    input ci,
+    output s,
+    output co
+  ) {
+
+  always {
+    // s = a XOR b XOR ci
+    s = a ^ b ^ ci;
+    // co = (a AND b) + (a AND ci) + (b AND ci)
+    co = (a&b) + (a&ci) + (b&ci);
+  }
+}
